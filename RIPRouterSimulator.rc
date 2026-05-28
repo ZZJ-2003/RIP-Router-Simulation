@@ -58,8 +58,7 @@ END
 //
 // Icon
 //
-// The dialog falls back to the system application icon when no custom icon file
-// is present in the source tree.
+IDR_MAINFRAME           ICON                    "res\\RIPRouterSimulator.ico"
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
