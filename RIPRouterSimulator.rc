@@ -1,0 +1,229 @@
+#pragma code_page(65001)
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#include "afxres.h"
+#include "verrsrc.h"
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+// 中文(简体，中国) resources
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+1 TEXTINCLUDE
+BEGIN
+"resource.h\0"
+END
+2 TEXTINCLUDE
+BEGIN
+"#ifndef APSTUDIO_INVOKED\r\n"
+"#include ""targetver.h""\r\n"
+"#endif\r\n"
+"#include ""afxres.h""\r\n"
+"#include ""verrsrc.h""\r\n"
+"\0"
+END
+3 TEXTINCLUDE
+BEGIN
+"#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+"#define _AFX_NO_OLE_RESOURCES\r\n"
+"#define _AFX_NO_TRACKER_RESOURCES\r\n"
+"#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+"\r\n"
+"#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
+"LANGUAGE 4, 2\r\n"
+"#include ""res\\RIPRouterSimulator.rc2""  // 非 Microsoft Visual C++ 编辑的资源\r\n"
+"#include ""l.CHS\\afxres.rc""      // 标准组件\r\n"
+"#if !defined(_AFXDLL)\r\n"
+"#include ""l.CHS\\afxribbon.rc""   // MFC 功能区和控制条资源\r\n"
+"#endif\r\n"
+"#endif\r\n"
+"\0"
+END
+#endif    // APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+IDR_MAINFRAME           ICON                    "res\\RIPRouterSimulator.ico"
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "关于 RIPRouterSimulator"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+LTEXT           "RIPRouterSimulator，1.0 版", IDC_STATIC, 42, 14, 114, 8, SS_NOPREFIX
+LTEXT           "Copyright (C) 2015", IDC_STATIC, 42, 26, 114, 8
+DEFPUSHBUTTON   "确定", IDOK, 113, 41, 50, 14, WS_GROUP
+END
+IDD_RIPROUTERSIMULATOR_DIALOG DIALOGEX 0, 0, 580, 420
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "RIPRouterSimulator"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+LISTBOX         IDC_LIST1, 7, 73, 566, 150, LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_HSCROLL | WS_TABSTOP
+CONTROL "", IDC_LIST_ROUTE, "SysListView32", LVS_REPORT | LVS_SHOWSELALWAYS | WS_VSCROLL | WS_TABSTOP, 7, 236, 566, 80
+PUSHBUTTON      "启动路由器", IDC_START, 48, 385, 90, 22
+PUSHBUTTON      "添加静态路由", IDC_ADD, 179, 385, 90, 22
+PUSHBUTTON      "删除路由", IDC_DEL, 310, 385, 90, 22
+PUSHBUTTON      "重置路由器", IDC_RETURN, 441, 385, 90, 22
+LTEXT           "路由表", IDC_STATIC, 13, 225, 35, 10
+LTEXT           "日志", IDC_STATIC, 13, 65, 25, 10
+CONTROL         "", IDC_IPADDRESS1, "SysIPAddress32", WS_TABSTOP, 210, 357, 100, 15
+CONTROL         "", IDC_IPADDRESS2, "SysIPAddress32", WS_TABSTOP, 11, 357, 100, 15
+CONTROL         "", IDC_IPADDRESS3, "SysIPAddress32", WS_TABSTOP, 410, 357, 100, 15
+LTEXT           "子网掩码", IDC_STATIC, 11, 345, 42, 10
+LTEXT           "目的网络", IDC_STATIC, 212, 345, 42, 10
+LTEXT           "下一跳", IDC_STATIC, 412, 345, 35, 10
+LISTBOX         IDC_LIST3, 7, 18, 270, 35, LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+LTEXT           "本机网卡", IDC_STATIC, 13, 9, 45, 10
+LISTBOX         IDC_LIST_SELECTED_IF, 280, 18, 230, 35, LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+LTEXT           "已选网卡", IDC_STATIC, 283, 9, 45, 10
+PUSHBUTTON      "添加网卡", IDC_ADD_IF, 515, 18, 55, 35
+END
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 1, 0, 0, 1
+PRODUCTVERSION 1, 0, 0, 1
+FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+FILEFLAGS 0x1L
+#else
+FILEFLAGS 0x0L
+#endif
+FILEOS 0x40004L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+BLOCK "StringFileInfo"
+BEGIN
+BLOCK "080404B0"
+BEGIN
+VALUE "CompanyName", "RIP Router Simulator"
+VALUE "FileDescription", "RIPRouterSimulator"
+VALUE "FileVersion", "1.0.0.1"
+VALUE "InternalName", "RIPRouterSimulator.exe"
+VALUE "LegalCopyright", "Copyright (C) RIP Router Simulator"
+VALUE "OriginalFilename", "RIPRouterSimulator.exe"
+VALUE "ProductName", "RIP Router Simulator"
+VALUE "ProductVersion", "1.0.0.1"
+END
+END
+BLOCK "VarFileInfo"
+BEGIN
+VALUE "Translation", 0x804, 1200
+END
+END
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+IDD_ABOUTBOX, DIALOG
+BEGIN
+LEFTMARGIN, 7
+RIGHTMARGIN, 163
+TOPMARGIN, 7
+BOTTOMMARGIN, 55
+END
+IDD_RIPROUTERSIMULATOR_DIALOG, DIALOG
+BEGIN
+LEFTMARGIN, 7
+RIGHTMARGIN, 573
+TOPMARGIN, 7
+BOTTOMMARGIN, 413
+END
+END
+#endif    // APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+STRINGTABLE
+BEGIN
+IDS_ABOUTBOX            "关于 RIPRouterSimulator(&A)..."
+IDP_SOCKETS_INIT_FAILED "Windows 套接字初始化失败。"
+IDS_TYPE                "类型"
+IDS_SUBNET_MASK         "子网掩码"
+IDS_DESTINATION         "目的网络"
+IDS_NEXT_HOP            "下一跳"
+IDS_METRIC              "度量值"
+IDS_DIRECT              "直连"
+IDS_STATIC              "静态"
+IDS_RIP                 "RIP"
+IDS_DIRECT_NEXT_HOP     "(直连)"
+IDS_SELECT_ROUTE        "请选择一条路由"
+IDS_CANNOT_DELETE_DIRECT "直连路由不能删除"
+IDS_MASK_INVALID        "请输入有效的子网掩码"
+IDS_DEST_INVALID        "请输入有效的目的网络"
+IDS_NEXTHOP_INVALID     "请输入有效的下一跳"
+IDS_NEXTHOP_UNREACHABLE "下一跳不可达"
+IDS_ADAPTER_ALREADY_ADDED "该网卡已添加"
+IDS_ADD_AT_LEAST_ONE_ADAPTER "请先添加一个网卡"
+IDS_NO_IPV4_ADDRESS     "该网卡没有IPv4地址"
+IDS_OPEN_ADAPTER_FAILED "打开网卡失败"
+IDS_ADDED_ADAPTER       "已添加网卡: "
+IDS_WINDOW_TITLE        "-RIP路由器模拟"
+IDS_LOG_HEADER          "==================== RIP Router Simulator ===================="
+IDS_LOG_FEATURES        "基于 Npcap, RIPv2 组播, 分路域, 老化机制"
+IDS_LOG_USAGE           "使用方法: 添加网卡 -> 启动"
+IDS_LOG_GET_ADAPTER_FAILED "获取网卡失败: "
+IDS_LOG_ADAPTER_INIT    "网卡已初始化"
+IDS_LOG_RIP_INIT        "RIP已初始化"
+IDS_LOG_RIP_RX_START    "[RIP RX] 从 %s 收到RIP更新"
+IDS_LOG_RIP_RX_ROUTE    "[RIP RX]  路由: %s/%s, Metric=%d"
+IDS_LOG_RIP_RX_LOCAL    "[RIP RX]  (跳过: 本地直连网段)"
+IDS_LOG_RIP_RX_SKIP     "[RIP RX]  (跳过: Metric >= 16)"
+IDS_LOG_RIP_RX_ADD      "[RIP RX]  添加新路由: %s/%s, NextHop=%s, Metric=%d"
+IDS_LOG_RIP_RX_UPDATE   "[RIP RX]  更新路由: %s/%s, Metric=%d -> %d"
+IDS_LOG_RIP_TX_START    "[RIP TX] 在网卡 %d 发送RIP更新到 224.0.0.9"
+IDS_LOG_RIP_TX_DIRECT   "[RIP TX]   直连路由: %s/%s, Metric=1"
+IDS_LOG_RIP_TX_RIP      "[RIP TX]   RIP路由: %s/%s, Metric=%d"
+IDS_LOG_RIP_TX_SEND     "[RIP TX] 共发送 %d 条路由"
+IDS_LOG_RIP_INVALID     "[RIP] 无效RIP包 (版本或命令错误)"
+IDS_LOG_IP_FORWARD      "[IP] 转发数据包: %s -> %s"
+IDS_LOG_ARP_SEND        "[ARP] 发送ARP请求: Who is %s?"
+END
+#endif    // 中文(简体，中国) resources
+/////////////////////////////////////////////////////////////////////////////
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE 4, 2
+#include "res\RIPRouterSimulator.rc2"  // 非 Microsoft Visual C++ 编辑的资源
+#include "l.CHS\afxres.rc"      // 标准组件
+#if !defined(_AFXDLL)
+#include "l.CHS\afxribbon.rc"   // MFC 功能区和控制条资源
+#endif
+#endif
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
