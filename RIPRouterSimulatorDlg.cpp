@@ -134,7 +134,6 @@ typedef struct RouteTable_t {
 
 typedef struct IP_MAC_t {
 	ULONG	IPAddr;
-	UINT	IfNo;
 	UCHAR	MACAddr[6];
 } IP_MAC_t;
 
@@ -164,15 +163,16 @@ CString IPntoa(ULONG nIPAddr);
 CString MACntoa(UCHAR* nMACAddr);
 bool cmpMAC(UCHAR* MAC1, UCHAR* MAC2);
 void cpyMAC(UCHAR* MAC1, UCHAR* MAC2);
-bool IPLookup(UINT ifNo, ULONG ipaddr, UCHAR* p);
-bool UpdateARPCache(UINT ifNo, ULONG ip, const UCHAR* mac);
-void FlushPendingPackets(UINT ifNo, ULONG ip, const UCHAR* mac);
+bool IPLookup(ULONG ipaddr, UCHAR* p);
+bool UpdateARPCache(ULONG ip, const UCHAR* mac);
+void FlushPendingPackets(ULONG ip, const UCHAR* mac);
 bool SendOrQueuePacket(UINT ifNo, ULONG targetIP, BYTE* frame, int len);
 bool IsLocalMAC(const UCHAR* mac);
 ULONG PacketHash(const BYTE* data, UINT len);
+UINT GetInterfaceNoByHandle(pcap_t* adhandle);
 void RecordSentFrame(UINT ifNo, const BYTE* data, UINT len);
 bool IsRecentlySentFrame(UINT ifNo, const BYTE* data, UINT len);
-int SendPacketOnInterface(UINT ifNo, const BYTE* frame, int len);
+int SendRawPacket(pcap_t* adhandle, const BYTE* frame, int len);
 UINT GetInterfaceNo(IfInfo_t* pIfInfo);
 bool ResolveInterfaceMAC(IfInfo_t* pIfInfo);
 ULONG GetInterfaceIPForTarget(UINT ifNo, ULONG targetIP);
@@ -181,14 +181,14 @@ void ProbeNextHopARP(UINT ifNo, ULONG targetIP);
 void WarmUpNextHopARPCache();
 UINT Capture(PVOID pParam);
 UINT CaptureLocalARP(PVOID pParam);
-void ARPRequest(UINT ifNo, UCHAR* srcMAC, ULONG srcIP, ULONG targetIP);
-void LearnSenderIPMAC(UINT ifNo, const u_char* pkt_data);
+void ARPRequest(pcap_t* adhandle, UCHAR* srcMAC, ULONG srcIP, ULONG targetIP);
+void LearnSenderIPMAC(const u_char* pkt_data);
 DWORD RouteLookup(UINT& ifNo, DWORD dst);
 void ARPPacketProc(struct pcap_pkthdr* header, const u_char* pkt_data, int ifNo);
 void IPPacketProc(IfInfo_t* pIfInfo, struct pcap_pkthdr* header, const u_char* pkt_data);
 void ICMPPacketProc(IfInfo_t* pIfInfo, BYTE type, BYTE code, const u_char* pkt_data);
 unsigned short ChecksumCompute(unsigned short* buffer, int size);
-void SendRIPPacket(int ifNo, BOOL bBroadcast);
+void SendRIPPacket(pcap_t* adhandle, int ifNo, BOOL bBroadcast);
 void SendICMPEchoReply(IfInfo_t* pIf, const u_char* pkt_data);
 
 class CAboutDlg : public CDialogEx
@@ -493,11 +493,11 @@ void CRouterDlg::SendRIPUpdate(int ifNo, BOOL bBroadcast)
 {
 	if (ifNo == -1) {
 		for (int i = 0; i < IfCount; i++) {
-			SendRIPPacket(i, bBroadcast);
+			SendRIPPacket(IfInfo[i].adhandle, i, bBroadcast);
 		}
 	}
 	else if (ifNo < IfCount) {
-		SendRIPPacket(ifNo, bBroadcast);
+		SendRIPPacket(IfInfo[ifNo].adhandle, ifNo, bBroadcast);
 	}
 }
 
@@ -577,7 +577,7 @@ void CRouterDlg::OnTimer(UINT_PTR nIDEvent)
 						CString logRetry;
 						logRetry.Format(_T("[ARP] 重试解析 %s (%u/%u)"), IPntoa(pkt.TargetIP), pkt.ArpRetries, ARP_MAX_RETRIES);
 						LogAdd(logRetry);
-				ARPRequest(pkt.IfNo, IfInfo[pkt.IfNo].MACAddr, srcIP, pkt.TargetIP);
+						ARPRequest(IfInfo[pkt.IfNo].adhandle, IfInfo[pkt.IfNo].MACAddr, srcIP, pkt.TargetIP);
 					}
 					SetTimer(pkt.n_mTimer, ARP_RETRY_INTERVAL, NULL);
 					mMutex.Unlock();
@@ -763,7 +763,7 @@ void CRouterDlg::ProcessRIPPacket(const u_char* pkt_data, UINT pkt_len, int ifNo
 		return;
 	}
 
-	LearnSenderIPMAC(ifNo, pkt_data);
+	LearnSenderIPMAC(pkt_data);
 
 	if (rip->header.Command == 1) {
 		LogAdd(_T("[RIP RX] 收到RIPv2请求，立即回应完整路由表"));
@@ -988,7 +988,7 @@ UINT CaptureLocalARP(PVOID p) {
 UINT Capture(PVOID pParam)
 {
 	IfInfo_t* pIf = (IfInfo_t*)pParam;
-	UINT ifNo = GetInterfaceNo(pIf);
+	UINT ifNo = (UINT)(pIf - IfInfo);
 	while (bRunning) {
 		pcap_pkthdr* hdr;
 		const u_char* data;
@@ -1004,13 +1004,13 @@ UINT Capture(PVOID pParam)
 			continue;
 		}
 		if (ntohs(fh->FrameType) == 0x0806) {
-			// 只丢弃本进程刚发出的回环帧；同机多实例可能使用相同网卡MAC。
+			// ARP包不进行IsLocalMAC过滤：多实例同机部署时ARP回复可能来自同MAC的网卡
 			ARPPacketProc(hdr, data, (int)ifNo);
 		}
 		else if (ntohs(fh->FrameType) == 0x0800) {
 			if (hdr->caplen < sizeof(FrameHeader_t) + sizeof(IPHeader_t)) continue;
 			IPHeader_t* iph = (IPHeader_t*)(data + sizeof(FrameHeader_t));
-			// RIP数据包由ProcessRIPPacket根据源IP自行过滤自身更新。
+			// RIP数据包：绕过IsLocalMAC过滤，由ProcessRIPPacket根据源IP自行过滤
 			if (iph->Protocol == IPPROTO_UDP) {
 				int hlen = (iph->Ver_HLen & 0x0F) * 4;
 				if (hlen >= 20 && hdr->caplen >= sizeof(FrameHeader_t) + hlen + sizeof(UDPHeader_t)) {
@@ -1021,6 +1021,7 @@ UINT Capture(PVOID pParam)
 					}
 				}
 			}
+			// 不再按源MAC一刀切丢包；同机多实例可能共享同一个网卡MAC。
 			IPPacketProc(pIf, hdr, data);
 		}
 	}
@@ -1030,10 +1031,8 @@ UINT Capture(PVOID pParam)
 void ARPPacketProc(pcap_pkthdr* header, const u_char* pkt_data, int ifNo)
 {
 	ARPFrame_t* arp = (ARPFrame_t*)pkt_data;
-	if (ifNo >= 0 && ifNo < IfCount) {
-		UpdateARPCache((UINT)ifNo, arp->SendIP, arp->SendHa);
-		FlushPendingPackets((UINT)ifNo, arp->SendIP, arp->SendHa);
-	}
+	UpdateARPCache(arp->SendIP, arp->SendHa);
+	FlushPendingPackets(arp->SendIP, arp->SendHa);
 
 	if (ntohs(arp->Operation) == 1) {
 		// ARP请求 - 检查是否请求我们的IP
@@ -1056,7 +1055,7 @@ void ARPPacketProc(pcap_pkthdr* header, const u_char* pkt_data, int ifNo)
 					reply->SendIP = IfInfo[ifNo].ip[j].IPAddr;
 					memcpy(reply->RecvHa, arp->SendHa, 6);
 					reply->RecvIP = arp->SendIP;
-					SendPacketOnInterface((UINT)ifNo, buf, sizeof(ARPFrame_t));
+					SendRawPacket(IfInfo[ifNo].adhandle, buf, sizeof(ARPFrame_t));
 
 					CString logARP;
 					logARP.Format(_T("[ARP] 回复: %s 是 %s"), IPntoa(targetIP), MACntoa(IfInfo[ifNo].MACAddr));
@@ -1075,9 +1074,9 @@ void ARPPacketProc(pcap_pkthdr* header, const u_char* pkt_data, int ifNo)
 	}
 }
 
-void LearnSenderIPMAC(UINT ifNo, const u_char* pkt_data)
+void LearnSenderIPMAC(const u_char* pkt_data)
 {
-	if (ifNo >= (UINT)IfCount || pkt_data == nullptr) return;
+	if (pkt_data == nullptr) return;
 
 	FrameHeader_t* fh = (FrameHeader_t*)pkt_data;
 	if (ntohs(fh->FrameType) != 0x0800) return;
@@ -1098,12 +1097,12 @@ void LearnSenderIPMAC(UINT ifNo, const u_char* pkt_data)
 		}
 	}
 
-	UpdateARPCache(ifNo, srcIP, fh->SrcMAC);
+	UpdateARPCache(srcIP, fh->SrcMAC);
 }
 
-bool UpdateARPCache(UINT ifNo, ULONG ip, const UCHAR* mac)
+bool UpdateARPCache(ULONG ip, const UCHAR* mac)
 {
-	if (ifNo >= (UINT)IfCount || ip == 0 || mac == nullptr) return false;
+	if (ip == 0 || mac == nullptr) return false;
 	UCHAR zero[6] = { 0 };
 	UCHAR broadcast[6] = { 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF };
 	if (memcmp(mac, zero, 6) == 0 || memcmp(mac, broadcast, 6) == 0) return false;
@@ -1120,7 +1119,7 @@ bool UpdateARPCache(UINT ifNo, ULONG ip, const UCHAR* mac)
 	while (pos) {
 		POSITION cur = pos;
 		IP_MAC_t im = IP_MAC.GetNext(pos);
-		if (im.IPAddr == ip && im.IfNo == ifNo) {
+		if (im.IPAddr == ip) {
 			if (memcmp(im.MACAddr, mac, 6) != 0) {
 				memcpy(im.MACAddr, mac, 6);
 				IP_MAC.SetAt(cur, im);
@@ -1132,7 +1131,6 @@ bool UpdateARPCache(UINT ifNo, ULONG ip, const UCHAR* mac)
 
 	IP_MAC_t im;
 	im.IPAddr = ip;
-	im.IfNo = ifNo;
 	memcpy(im.MACAddr, mac, 6);
 	IP_MAC.AddHead(im);
 
@@ -1144,18 +1142,18 @@ bool UpdateARPCache(UINT ifNo, ULONG ip, const UCHAR* mac)
 	return true;
 }
 
-void FlushPendingPackets(UINT ifNo, ULONG ip, const UCHAR* mac)
+void FlushPendingPackets(ULONG ip, const UCHAR* mac)
 {
 	mMutex.Lock();
 	POSITION pos = SP.GetHeadPosition();
 	while (pos) {
 		POSITION cur = pos;
 		SendPacket_t pkt = SP.GetNext(pos);
-		if (pkt.TargetIP == ip && pkt.IfNo == ifNo && pkt.IfNo < (UINT)IfCount) {
+		if (pkt.TargetIP == ip && pkt.IfNo < (UINT)IfCount) {
 			FrameHeader_t* fh = (FrameHeader_t*)pkt.PktData;
 			memcpy(fh->DesMAC, mac, 6);
 			memcpy(fh->SrcMAC, IfInfo[pkt.IfNo].MACAddr, 6);
-			if (SendPacketOnInterface(pkt.IfNo, pkt.PktData, pkt.len) == 0) {
+			if (SendRawPacket(IfInfo[pkt.IfNo].adhandle, pkt.PktData, pkt.len) == 0) {
 				SP.RemoveAt(cur);
 				if (pDlg) pDlg->KillTimer(pkt.n_mTimer);
 			}
@@ -1179,10 +1177,10 @@ bool SendOrQueuePacket(UINT ifNo, ULONG targetIP, BYTE* frame, int len)
 
 	FrameHeader_t* fh = (FrameHeader_t*)frame;
 	UCHAR mac[6];
-	if (IPLookup(ifNo, targetIP, mac)) {
+	if (IPLookup(targetIP, mac)) {
 		memcpy(fh->DesMAC, mac, 6);
 		memcpy(fh->SrcMAC, IfInfo[ifNo].MACAddr, 6);
-		if (SendPacketOnInterface(ifNo, frame, len) == 0) {
+		if (SendRawPacket(IfInfo[ifNo].adhandle, frame, len) == 0) {
 			return true;
 		}
 		// 直接发送失败，回退到队列等待ARP重试
@@ -1203,7 +1201,7 @@ bool SendOrQueuePacket(UINT ifNo, ULONG targetIP, BYTE* frame, int len)
 
 	ULONG srcIP = GetInterfaceIPForTarget(ifNo, targetIP);
 	if (srcIP != 0) {
-		ARPRequest(ifNo, IfInfo[ifNo].MACAddr, srcIP, targetIP);
+		ARPRequest(IfInfo[ifNo].adhandle, IfInfo[ifNo].MACAddr, srcIP, targetIP);
 	}
 	return true;
 }
@@ -1220,12 +1218,23 @@ bool IsLocalMAC(const UCHAR* mac)
 ULONG PacketHash(const BYTE* data, UINT len)
 {
 	if (data == nullptr) return 0;
+
 	ULONG hash = 2166136261u;
 	for (UINT i = 0; i < len; i++) {
 		hash ^= data[i];
 		hash *= 16777619u;
 	}
 	return hash;
+}
+
+UINT GetInterfaceNoByHandle(pcap_t* adhandle)
+{
+	if (adhandle == nullptr) return (UINT)-1;
+
+	for (int i = 0; i < IfCount; i++) {
+		if (IfInfo[i].adhandle == adhandle) return (UINT)i;
+	}
+	return (UINT)-1;
 }
 
 void RecordSentFrame(UINT ifNo, const BYTE* data, UINT len)
@@ -1247,8 +1256,8 @@ void RecordSentFrame(UINT ifNo, const BYTE* data, UINT len)
 	POSITION pos = SentFrames.GetHeadPosition();
 	while (pos) {
 		POSITION cur = pos;
-		SentFrame_t e = SentFrames.GetNext(pos);
-		if ((DWORD)(now - e.Tick) > SENT_FRAME_TTL) {
+		SentFrame_t old = SentFrames.GetNext(pos);
+		if ((DWORD)(now - old.Tick) > SENT_FRAME_TTL) {
 			SentFrames.RemoveAt(cur);
 		}
 	}
@@ -1271,12 +1280,12 @@ bool IsRecentlySentFrame(UINT ifNo, const BYTE* data, UINT len)
 	POSITION pos = SentFrames.GetHeadPosition();
 	while (pos) {
 		POSITION cur = pos;
-		SentFrame_t e = SentFrames.GetNext(pos);
-		if ((DWORD)(now - e.Tick) > SENT_FRAME_TTL) {
+		SentFrame_t old = SentFrames.GetNext(pos);
+		if ((DWORD)(now - old.Tick) > SENT_FRAME_TTL) {
 			SentFrames.RemoveAt(cur);
 			continue;
 		}
-		if (e.IfNo == ifNo && e.Len == len && e.Hash == hash) {
+		if (old.IfNo == ifNo && old.Len == len && old.Hash == hash) {
 			SentFrames.RemoveAt(cur);
 			matched = true;
 			break;
@@ -1286,13 +1295,13 @@ bool IsRecentlySentFrame(UINT ifNo, const BYTE* data, UINT len)
 	return matched;
 }
 
-int SendPacketOnInterface(UINT ifNo, const BYTE* frame, int len)
+int SendRawPacket(pcap_t* adhandle, const BYTE* frame, int len)
 {
-	if (ifNo >= (UINT)IfCount || frame == nullptr || len <= 0 || IfInfo[ifNo].adhandle == nullptr) {
-		return -1;
+	UINT ifNo = GetInterfaceNoByHandle(adhandle);
+	if (ifNo != (UINT)-1 && frame != nullptr && len > 0) {
+		RecordSentFrame(ifNo, frame, (UINT)len);
 	}
-	RecordSentFrame(ifNo, frame, (UINT)len);
-	return pcap_sendpacket(IfInfo[ifNo].adhandle, frame, len);
+	return pcap_sendpacket(adhandle, frame, len);
 }
 
 UINT GetInterfaceNo(IfInfo_t* pIfInfo)
@@ -1351,7 +1360,7 @@ void ProbeNextHopARP(UINT ifNo, ULONG targetIP)
 	if (ifNo >= (UINT)IfCount || targetIP == 0) return;
 
 	UCHAR mac[6];
-	if (IPLookup(ifNo, targetIP, mac)) return;
+	if (IPLookup(targetIP, mac)) return;
 
 	ULONG srcIP = GetInterfaceIPForTarget(ifNo, targetIP);
 	if (srcIP == 0) return;
@@ -1359,7 +1368,7 @@ void ProbeNextHopARP(UINT ifNo, ULONG targetIP)
 	CString logProbe;
 	logProbe.Format(_T("[ARP] 预解析下一跳: %s (接口%u)"), IPntoa(targetIP), ifNo);
 	if (pDlg) pDlg->LogAdd(logProbe);
-	ARPRequest(ifNo, IfInfo[ifNo].MACAddr, srcIP, targetIP);
+	ARPRequest(IfInfo[ifNo].adhandle, IfInfo[ifNo].MACAddr, srcIP, targetIP);
 }
 
 void WarmUpNextHopARPCache()
@@ -1412,7 +1421,7 @@ void IPPacketProc(IfInfo_t* pIf, pcap_pkthdr* header, const u_char* pkt_data)
 		return;
 	}
 	if (header->caplen >= sizeof(FrameHeader_t) + sizeof(IPHeader_t)) {
-		LearnSenderIPMAC(GetInterfaceNo(pIf), pkt_data);
+		LearnSenderIPMAC(pkt_data);
 	}
 	BYTE frame[2000];
 	memcpy(frame, pkt_data, header->caplen);
@@ -1582,10 +1591,8 @@ void SendICMPEchoReply(IfInfo_t* pIf, const u_char* pkt_data)
 	if (pDlg) pDlg->LogAdd(logICMP);
 }
 
-void ARPRequest(UINT ifNo, UCHAR* srcMac, ULONG srcIp, ULONG dstIp)
+void ARPRequest(pcap_t* ad, UCHAR* srcMac, ULONG srcIp, ULONG dstIp)
 {
-	if (ifNo >= (UINT)IfCount) return;
-
 	CString logARP;
 	logARP.Format(_T("[ARP] 请求: 谁是 %s?"), IPntoa(dstIp));
 	if (pDlg) pDlg->LogAdd(logARP);
@@ -1603,13 +1610,11 @@ void ARPRequest(UINT ifNo, UCHAR* srcMac, ULONG srcIp, ULONG dstIp)
 	memcpy(arp->SendHa, srcMac, 6);
 	arp->SendIP = srcIp;
 	arp->RecvIP = dstIp;
-	SendPacketOnInterface(ifNo, buf, sizeof(ARPFrame_t));
+	SendRawPacket(ad, buf, sizeof(ARPFrame_t));
 }
 
-void SendRIPPacket(int ifNo, BOOL bBroadcast)
+void SendRIPPacket(pcap_t* adhandle, int ifNo, BOOL bBroadcast)
 {
-	if (ifNo < 0 || ifNo >= IfCount) return;
-
 	std::vector<RIPRouteEntry> entries;
 	int nDirect = 0, nStatic = 0, nRIP = 0, nPoison = 0;
 
@@ -1701,7 +1706,7 @@ void SendRIPPacket(int ifNo, BOOL bBroadcast)
 		rip->header.Reserved = 0;
 		memcpy(rip->entries, &entries[offset], count * sizeof(RIPRouteEntry));
 
-		if (SendPacketOnInterface((UINT)ifNo, pkt, sizeof(FrameHeader_t) + ipTotal) == 0) {
+		if (SendRawPacket(adhandle, pkt, sizeof(FrameHeader_t) + ipTotal) == 0) {
 			packetCount++;
 		}
 		offset += count;
@@ -1746,15 +1751,13 @@ DWORD RouteLookup(UINT& ifNo, DWORD dst)
 	return nh;
 }
 
-bool IPLookup(UINT ifNo, ULONG ip, UCHAR* mac)
+bool IPLookup(ULONG ip, UCHAR* mac)
 {
-	if (ifNo >= (UINT)IfCount) return false;
-
 	mMutex.Lock();
 	POSITION pos = IP_MAC.GetHeadPosition();
 	while (pos) {
 		IP_MAC_t im = IP_MAC.GetNext(pos);
-		if (im.IPAddr == ip && im.IfNo == ifNo) {
+		if (im.IPAddr == ip) {
 			memcpy(mac, im.MACAddr, 6);
 			mMutex.Unlock();
 			return true;
