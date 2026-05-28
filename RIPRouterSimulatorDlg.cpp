@@ -426,7 +426,8 @@ void CRouterDlg::OnBnClickedStart()
 			return;
 		}
 
-		IfInfo[IfCount].adhandle = pcap_open(IfInfo[IfCount].DeviceName, 65536, PCAP_OPENFLAG_PROMISCUOUS, 1000, 0, errbuf);
+		// Keep capture latency low; the old 1000ms timeout stacked across hops and made ping replies arrive seconds late.
+		IfInfo[IfCount].adhandle = pcap_open(IfInfo[IfCount].DeviceName, 65536, PCAP_OPENFLAG_PROMISCUOUS, 10, 0, errbuf);
 		if (!IfInfo[IfCount].adhandle) {
 			MessageBox(_T("打开网卡失败"));
 			bRunning = FALSE;
